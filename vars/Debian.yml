@@ -1,0 +1,4 @@
+---
+spack_os_installer_discriminator: '{{ansible_system}}'
+spack_dep_pkgs:
+  - git
