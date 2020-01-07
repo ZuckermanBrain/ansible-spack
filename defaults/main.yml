@@ -21,17 +21,17 @@ spack_mirror_dir: "{{ spack_install_dir }}/mirror"
 # By default, we use the two newest stable versions (as of 1/2020).
 spack_base_env:
   - "gcc@9.2.0"
-  - "gcc@8.3.0"
-  - "llvm@9.0.0"
-  - "llvm@8.0.0"
-  - "intel@19.0.4"
-  - "intel@18.0.4"
+#  - "gcc@8.3.0"
+#  - "llvm@9.0.0"
+#  - "llvm@8.0.0"
+#  - "intel@19.0.4"
+#  - "intel@18.0.4"
 
 # A list of packages to populate the source code cache / mirror with.
 spack_mirror_pkgs:
   - gcc
-  - llvm
-  - f18
-  - intel
+#  - llvm
+#  - f18
+#  - intel
 
 spack_user_storage: /srv/spack

@@ -92,30 +92,41 @@
   become: yes
   become_user: '{{ spack_service_user }}'
   command: /bin/scl enable devtoolset-8 "{{ spack_install_dir }}/bin/spack compiler find"
-
-# This takes a long time because compiling compilers takes a long time.
-# Anecdotal reference:
-# https://unix.stackexchange.com/questions/421822/how-long-does-it-take-to-compile-gcc-7-3-0
-- name: Install base environment packages
-  become: yes
-  become_user: '{{ spack_service_user }}'
-  with_items: '{{ spack_base_env }}'
-  when: spack_base_env is defined
-  command: "{{ spack_install_dir }}/bin/spack install {{ item }}"
-  async: '{{spack_timeout_seconds}}'
-  poll: 120
-
-- name: Make a package mirror / local cache of source code for all versions of key packages and their dependencies.
-  become: yes
-  become_user: '{{ spack_service_user }}'
-  with_items: '{{ spack_mirror_pkgs }}'
-  when: spack_mirror_pkgs is defined
-  command: "{{ spack_install_dir }}/bin/spack mirror create -D -d {{ spack_mirror_dir }} -n all {{ item }}"
-  async: '{{spack_timeout_seconds}}'
-  poll: 120
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version < '8'
 
 - name: Add the package mirror as a default mirror globally.
   become: yes
   become_user: '{{ spack_service_user }}'
   command: "{{ spack_install_dir }}/bin/spack mirror add local file://{{ spack_mirror_dir }} --scope defaults"
+  when: spack_mirror_pkgs is defined   
+
+#- name: Generate commands for mirroring source code and setting up a base environment.
+#  set_fact:
+#    spack_mirror_cmds: "[ {% for item in spack_mirror_pkgs %}'{{ spack_install_dir }}/bin/spack mirror create -D -d {{ spack_mirror_dir }} -n all {{ item }}', {% endfor %} ]"
+#    spack_base_env_cmds: "[ {% for item in spack_base_env %}'{{ spack_install_dir }}/bin/spack install {{ item }}', {% endfor %} ]"
+#
+#- name: Print Spack commands that will be run
+#  debug:
+#    msg: "Commands to be run: {{ spack_mirror_cmds + spack_base_env_cmds }}"
+
+- name: Make a package mirror / local cache of source code for all versions of key packages and their dependencies.
+  become: yes
+  become_user: '{{ spack_service_user }}'
+  with_items: "{{ spack_mirror_pkgs }}"
   when: spack_mirror_pkgs is defined
+  command: "{{ spack_install_dir }}/bin/spack mirror create -D -d {{ spack_mirror_dir }} -n all {{ item }}"
+  async: '{{spack_timeout_seconds}}'
+  poll: 120
+
+# This takes a long time because compiling compilers takes a long time.
+# Because of this we have it run asynchronously.
+# Anecdotal reference:
+# https://unix.stackexchange.com/questions/421822/how-long-does-it-take-to-compile-gcc-7-3-0
+- name: Install base environment packages.
+  become: yes
+  become_user: '{{ spack_service_user }}'
+  with_items: "{{ spack_base_env }}"
+  when: spack_base_env is defined
+  command: "{{ spack_install_dir }}/bin/spack install {{ item }}"
+  async: '{{spack_timeout_seconds}}'
+  poll: 120
