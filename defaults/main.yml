@@ -20,7 +20,8 @@ spack_mirror_dir: "{{ spack_install_dir }}/mirror"
 # A list of packages to install for the base environment
 # By default, we use the two newest stable versions (as of 1/2020).
 spack_base_env:
-  - "gcc@9.2.0"
+  - "bzip2@1.0.6"
+#  - "gcc@9.2.0"
 #  - "gcc@8.3.0"
 #  - "llvm@9.0.0"
 #  - "llvm@8.0.0"
@@ -29,9 +30,12 @@ spack_base_env:
 
 # A list of packages to populate the source code cache / mirror with.
 spack_mirror_pkgs:
-  - gcc
+  - bzip2
+#  - gcc
 #  - llvm
 #  - f18
 #  - intel
 
 spack_user_storage: /srv/spack
+
+spack_modules: False

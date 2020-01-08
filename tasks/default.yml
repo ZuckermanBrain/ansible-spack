@@ -10,7 +10,7 @@
     name: '{{ spack_os_pkg }}'
 
 - name: Create a Spack service user.
-  user:
+  user: 
     name: '{{ spack_service_user }}'
     home: /var/lib/{{ spack_service_user }}
     shell: /sbin/nologin
@@ -68,23 +68,48 @@
     src: spack-env.sh.j2
     dest: /etc/profile.d/spack-env.sh
 
-# TODO- Revisit this after making this role work for a traditional gatekeeper model.
-## All directories / files will be owned by the service user's group
-## so that it can read/write as necessary for various back-up and other maintenance operations.
-#- name: Create centralized location for user environments and package caches.
-#  become: yes
-#  become_user: root
-#  file:
-#    path: '{{ spack_user_storage }}'
-#    owner: '{{ spack_service_user }}'
-#    group: '{{ spack_service_user }}'
-#    state: directory
-#    mode: 02777
-
 - name: Initialize Spack environmment
   become: yes
   become_user: '{{ spack_service_user }}'
   command: "/bin/bash /etc/profile.d/spack-env.sh"
+
+# All directories / files will be owned by the service user's group
+# so that it can read/write as necessary for various back-up and other maintenance operations.
+- name: Create centralized location for package caches.
+  become: yes
+  become_user: root
+  file:
+    path: '{{ spack_user_storage }}'
+    owner: '{{ spack_service_user }}'
+    group: '{{ spack_service_user }}'
+    state: directory
+    mode: 02777
+
+- name: Ensure that environments directory can be read/written to by anyone (like /tmp)
+  become: yes
+  become_user: '{{ spack_service_user }}'
+  file:
+    path: '{{ spack_user_storage }}'
+    owner: '{{ spack_service_user }}'
+    group: '{{ spack_service_user }}'
+    state: directory
+    mode: 05777
+
+- name: Update main Spack configuration.
+  become: yes
+  become_user: '{{ spack_service_user }}'
+  copy:
+    src: config.yaml
+    dest: '{{ spack_install_dir }}/etc/spack/defaults/config.yaml'
+    owner: '{{ spack_service_user }}'
+    group: '{{ spack_service_user }}'
+    mode: 0644
+
+- name: Remove modules config if modules are not enabled.
+  file:
+    path: '{{ spack_install_dir }}/etc/spack/defaults/modules.yaml'
+    state: absent
+  when: not spack_modules
 
 # If we don't have gcc 8, various Spack commands for installing / mirroring compilers will crap out, since LLVM requires gcc 8 instead
 # of the the CentOS 7 default (4.8.5).  Even for mirroring, Spack seems to concretize for some reason.
@@ -99,15 +124,6 @@
   become_user: '{{ spack_service_user }}'
   command: "{{ spack_install_dir }}/bin/spack mirror add local file://{{ spack_mirror_dir }} --scope defaults"
   when: spack_mirror_pkgs is defined   
-
-#- name: Generate commands for mirroring source code and setting up a base environment.
-#  set_fact:
-#    spack_mirror_cmds: "[ {% for item in spack_mirror_pkgs %}'{{ spack_install_dir }}/bin/spack mirror create -D -d {{ spack_mirror_dir }} -n all {{ item }}', {% endfor %} ]"
-#    spack_base_env_cmds: "[ {% for item in spack_base_env %}'{{ spack_install_dir }}/bin/spack install {{ item }}', {% endfor %} ]"
-#
-#- name: Print Spack commands that will be run
-#  debug:
-#    msg: "Commands to be run: {{ spack_mirror_cmds + spack_base_env_cmds }}"
 
 - name: Make a package mirror / local cache of source code for all versions of key packages and their dependencies.
   become: yes
