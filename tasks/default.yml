@@ -9,15 +9,25 @@
     state: present
     name: '{{ spack_os_pkg }}'
 
+- name: Create a Spack service user group with a specific guid.
+  group:
+    name: '{{ spack_service_group }}'
+    gid: '{{ spack_service_group_gid }}'
+  when: "{{ spack_service_group_gid|default(false, true) }}"
+
+- name: Create a Spack service user group with a specific guid.
+  group:
+    name: '{{ spack_service_group }}'
+  when: "not {{ spack_service_group_gid|default(false, true) }}"
+
 - name: Create a Spack service user with a specific uid/primary group gid.
   user: 
     name: '{{ spack_service_user }}'
     uid: '{{ spack_service_user_uid }}'
     group: '{{ spack_service_group }}'
-    gid: '{{ spack_service_group_gid }}'
     home: /var/lib/{{ spack_service_user }}
     shell: /sbin/nologin
-  when: "{{ spack_service_user_uid |default(false, true) }}" and "{{ spack_service_group_gid |default(false, true) }}"
+  when: "{{ spack_service_user_uid |default(false, true) }}"
   register: make_service_user_result
 
 - name: Create a Spack service user.
@@ -62,21 +72,13 @@
         state: directory
         mode: 0755
 
-- name: Add sudoers rule to make it so that "spack install" is run as service account on build host
+- name: Add sudoers rule to make it so that members of the spack service user's group can run spack.
   become: yes
   become_user: root
-  when: not spack_binary.stat.exists and spack_build_host
+  when: not spack_binary.stat.exists
   template:
     src: sudoers-spack.j2
     dest: /etc/sudoers.d/spack
-
-- name: Update setup-env.sh spack wrapper function to force install command to sudo to service account
-  become: yes
-  become_user: root
-  when: not spack_binary.stat.exists and spack_build_host
-  template:
-    src: setup-env.sh.j2
-    dest: '{{ spack_install_dir }}/share/spack/setup-env.sh'
 
 - name: Add Spack to universal bash profile.
   become: yes
@@ -92,16 +94,6 @@
   when: not spack_binary.stat.exists
   command: "/bin/bash /etc/profile.d/spack-env.sh"
 
-- name: Ensure that environments directory can be read/written to by anyone and can be backed up by the service user
-  become: yes
-  become_user: '{{ spack_service_user }}'
-  file:
-    path: '{{ spack_install_dir }}/var/spack/environments'
-    owner: '{{ spack_service_user }}'
-    group: '{{ spack_service_group }}'
-    state: directory
-    mode: 02777
-
 - name: Remove modules config if modules are not enabled.
   file:
     path: '{{ spack_install_dir }}/etc/spack/defaults/modules.yaml'
@@ -116,11 +108,11 @@
   command: /bin/scl enable devtoolset-8 "{{ spack_install_dir }}/bin/spack compiler find --scope defaults"
   when: ansible_os_family == "RedHat" and ansible_distribution_major_version < '8'
 
-- name: Add the package mirror as a default mirror globally.
+- name: Add a remote package mirror as a globally available mirror on this host.
   become: yes
   become_user: '{{ spack_service_user }}'
-  command: "{{ spack_install_dir }}/bin/spack mirror add local file://{{ spack_mirror_dir }} --scope defaults"
-  when: "{{ spack_mirror_pkgs|default(false, true) }}"
+  command: "{{ spack_install_dir }}/bin/spack mirror add {{ spack_mirror_remote_name|default('remote', true) }} {{ spack_mirror_remote_addr }} --scope defaults"
+  when: "{{ spack_mirror_remote|default(false, true) }}"
 
 - name: Make a package mirror / local cache of source code for all versions of key packages and their dependencies.
   become: yes
@@ -130,6 +122,12 @@
   command: "{{ spack_install_dir }}/bin/spack mirror create -D -d {{ spack_mirror_dir }} -n all {{ item }}"
   async: '{{spack_timeout_seconds}}'
   poll: 120
+
+- name: Add a local package mirror as a globally available mirror on this host.
+  become: yes
+  become_user: '{{ spack_service_user }}'
+  command: "{{ spack_install_dir }}/bin/spack mirror add local file://{{ spack_mirror_dir }} --scope defaults"
+  when: "{{ spack_mirror_pkgs|default(false, true) }}"
 
 # This takes a long time because compiling compilers takes a long time.
 # Because of this we have it run asynchronously.

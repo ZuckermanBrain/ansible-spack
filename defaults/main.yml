@@ -22,11 +22,30 @@ spack_timeout_seconds: 43200
 spack_make_sys_default: True
 
 spack_install_dir: /usr/local/spack
-spack_mirror_dir: "{{ spack_install_dir }}/mirror"
+
+# spack_mirror_dir and spack_mirror_pkgs are used to create and populate
+# a spack mirror on the local filesystem
+#spack_mirror_dir: "{{ spack_install_dir }}/mirror"
+# A list of packages to populate the source code cache / mirror with.
+#spack_mirror_pkgs:
+#  - bzip2
+#  - gcc
+#  - llvm
+#  - f18
+#  - intel
+
+# Configure a remote spack mirror?
+spack_mirror_remote: False
+# spack_mirror_remote_addr is used to define a remote mirror / source code code
+# It should be populated with a protocol and FQDN (e.g., https://example.com/mirror)
+#spack_mirror_remote_addr: 'https://adm.rc.zi.columbia.edu/spackmirror'
+# A name for the remote mirror.
+#spack_mirror_remote_name: zirc
 
 # A list of packages to install for the base environment
-# By default, we use the two newest stable versions (as of 1/2020).
-spack_base_env:
+# This is more useful for fresh installs of Spack on VMs.
+# On our build host we would just run the spack install command manually.
+#spack_base_env:
 #  - "bzip2@1.0.6"
 #  - "gcc@9.2.0"
 #  - "gcc@8.3.0"
@@ -35,19 +54,5 @@ spack_base_env:
 #  - "intel@19.0.4"
 #  - "intel@18.0.4"
 
-# A list of packages to populate the source code cache / mirror with.
-spack_mirror_pkgs:
-#  - bzip2
-#  - gcc
-#  - llvm
-#  - f18
-#  - intel
-
 # Whether or not an environment modules system (such as tcl / lmod) is used.
 spack_modules: False
-
-# Set this to true if "spack install" can be run, false otherwise.
-# This is used for heterogeneous environments where binaries should
-# be compiled on the chipset with the least features to ensure
-# broad compatibility.
-spack_build_host: True
