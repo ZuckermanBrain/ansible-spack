@@ -1,0 +1,11 @@
+#!/bin/bash
+# This script iterates through each individual user's local stored package cache
+# in a centralized, shared Anaconda environment and removes cached items
+# that are no longer in active use.
+
+export CONDA_USER_STORAGE={{ anaconda_user_storage }}
+for CONDA_USER in ${CONDA_USER_STORAGE}/*;
+do
+	export CONDA_PKGS_DIRS=${CONDA_USER}/pkgs
+	{{ anaconda_install_dir }}/bin/conda clean -y --all
+done

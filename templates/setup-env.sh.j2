@@ -39,6 +39,30 @@
 # spack module files.
 ########################################################################
 
+# Spack has formal support for post-install hooks, but in our case since
+# we're already using a custom wrapper it's easier to just add more logic to that.
+# Technically Spack has a database for transactions as well, but it doesn't
+# seem to be fully fleshed out (see https://github.com/spack/spack/issues/3677)
+# and I'm not sure if it tracks changes in individual environments.
+_spack_postinstall() {
+	if [ ! -z ${SPACK_ENV} ] && [ -d ${SPACK_ENV} ]; then
+		if [ ! -d ${SPACK_ENV}/.git ] && which git 2>&1 > /dev/null;
+		then
+			pushd ${SPACK_ENV} > /dev/null
+			echo ".spack_env" > .gitignore
+			git init -q
+			popd > /dev/null
+		fi
+		if which git 2>&1 > /dev/null;
+		then
+			pushd ${SPACK_ENV} > /dev/null
+			git add *
+			git commit -q -m "$(basename ${SPACK_ENV}): ${SPACK_TRANSACTION}"
+			popd > /dev/null
+		fi
+	fi
+}
+
 spack() {
     # Zsh does not do word splitting by default, this enables it for this
     # function only
@@ -77,18 +101,28 @@ spack() {
     case $_sp_subcommand in
 	# Zuckerman Institute: jsp2205 : 1/8/20
 	# Custom logic for running Spack with a service user
-        "install")
+	# Users cannot uninstall packages from the shared global install since other users may be using them.
+	# Only admins can remove packages.
+        "install"|"uninstall")
             _sp_arg=""
             if [ -n "$1" ]; then
                 _sp_arg="$1"
                 shift
             fi
             if [ "$_sp_arg" = "-h" ] || [ "$_sp_arg" = "--help" ]; then
-                command spack install -h
+                command spack $_sp_subcommand -h
             else
+		SPACK_TRANSACTION="$_sp_subcommand $_sp_arg $@"
+		# Users should be able to uninstall packages from their own environments, however.
+		if [ -z ${SPACK_ENV} ] && [ "$_sp_subcommand" = "uninstall" ]; then
+			echo "Error: ${SPACK_TRANSACTION} cannot be performed on global installation, only within environments."
+			return
+		fi
 		pushd /tmp > /dev/null	
-		sudo -E -u {{ spack_service_user }} {{ spack_install_dir }}/bin/spack install $_sp_arg "$@"
+		sudo -E -u {{ spack_service_user }} ${SPACK_ROOT}/bin/spack $_sp_subcommand $_sp_arg "$@"
+		_spack_postinstall
 		popd > /dev/null
+		unset SPACK_TRANSACTION
             fi
             return
             ;;

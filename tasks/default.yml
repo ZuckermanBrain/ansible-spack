@@ -9,20 +9,24 @@
     state: present
     name: '{{ spack_os_pkg }}'
 
+- name: Create a Spack service user with a specific uid/primary group gid.
+  user: 
+    name: '{{ spack_service_user }}'
+    uid: '{{ spack_service_user_uid }}'
+    group: '{{ spack_service_group }}'
+    gid: '{{ spack_service_group_gid }}'
+    home: /var/lib/{{ spack_service_user }}
+    shell: /sbin/nologin
+  when: "{{ spack_service_user_uid |default(false, true) }}" and "{{ spack_service_group_gid |default(false, true) }}"
+  register: make_service_user_result
+
 - name: Create a Spack service user.
   user: 
     name: '{{ spack_service_user }}'
+    group: '{{ spack_service_group }}'
     home: /var/lib/{{ spack_service_user }}
     shell: /sbin/nologin
-
-# Not sure if this will be necessary.  Leaving it in for now. 
-# In the conda role, this is used for regularly backing up conda envs.
-#- name: Ensure that service user's name and e-mail are configured for git.
-#  become: yes
-#  become_user: '{{ spack_service_user }}'
-#  template:
-#    src: gitconfig.j2
-#    dest: /var/lib/{{ spack_service_user }}/.gitconfig
+  when: make_service_user_result is skipped
 
 - name: Check for installation of Spack
   become: yes
@@ -47,7 +51,7 @@
       file:
         path: '{{ spack_install_dir }}'
         owner: '{{ spack_service_user }}'
-        group: '{{ spack_service_user }}'
+        group: '{{ spack_service_group }}'
         state: directory
         recurse: yes
         follow: no
@@ -94,7 +98,7 @@
   file:
     path: '{{ spack_install_dir }}/var/spack/environments'
     owner: '{{ spack_service_user }}'
-    group: '{{ spack_service_user }}'
+    group: '{{ spack_service_group }}'
     state: directory
     mode: 02777
 

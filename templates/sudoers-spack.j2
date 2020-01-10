@@ -1,2 +1,2 @@
 ## SETENV is needed for Spack environments to work properly with spack install when run with "sudo -E -u {{ spack_service_user }}"
-ALL     ALL=({{ spack_service_user }})     NOPASSWD:SETENV:       {{ spack_install_dir }}/bin/spack install *
+%{{ spack_service_group }}	ALL=({{ spack_service_user }})     NOPASSWD:SETENV:       {{ spack_install_dir }}/bin/spack *

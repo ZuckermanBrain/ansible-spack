@@ -1,0 +1,25 @@
+#!/bin/bash
+# This script regularly iterates over Spack environments and commits
+# changes made to lockfiles / environment manifests to a repo.
+# It runs as service account with read/write access to the environment directories
+# via its group.
+
+export SPACK_ENV_DIR={{ spack_install_dir }}/var/spack/environments
+for SPACK_ENV in ${SPACK_ENV_DIR}/*
+do
+	# Initialize git repo if git is installed.
+	if [ ! -d ${SPACK_ENV}/.git ] && which git 2>&1 > /dev/null;
+	then
+		pushd ${SPACK_ENV}
+		echo ".spack_env" > .gitignore
+		git init
+		popd
+	fi
+	if which git 2>&1 > /dev/null;
+	then
+		pushd ${SPACK_ENV}
+		git add *
+		git commit -m "Regular git backup for $(basename ${SPACK_ENV}), owned by $(stat -c '%U' ${SPACK_ENV})"
+		popd
+	fi
+done

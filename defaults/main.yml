@@ -5,7 +5,14 @@ spack_repo: https://github.com/spack/spack.git
 # spack version; this is encoded as a Github tag
 spack_ver: 'v0.13.3'
 
+# The service account needs a uid/gid that is common
+# across multiple hosts if NFS is being used, otherwise
+# the UID and GID can be set to None or left blank.
+# CentOS 7 defaults to a range of 201-999 for service accounts.
 spack_service_user: spack
+spack_service_user_uid: 900
+spack_service_group: spack
+spack_service_group_gid: 900
 
 # Timeout period when Spack is installing packages or populating a mirror
 # We set this to 12 hours because compilers take a long time to compile from source.
