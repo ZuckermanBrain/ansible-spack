@@ -108,6 +108,13 @@
   command: /bin/scl enable devtoolset-8 "{{ spack_install_dir }}/bin/spack compiler find --scope defaults"
   when: ansible_os_family == "RedHat" and ansible_distribution_major_version < '8'
 
+- name: Add cron job to regularly run "spack clean" in the early morning
+  cron:
+    hour: "4"
+    minute: "0"
+    user: '{{ spack_service_user }}'
+    job: "{{ spack_install_dir }}/bin/spack clean"
+
 - name: Add a remote package mirror as a globally available mirror on this host.
   become: yes
   become_user: '{{ spack_service_user }}'
